@@ -186,6 +186,9 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  /* Initialize blocked time */
+  t->ticks_blocked = 0;
+
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -206,6 +209,24 @@ thread_create (const char *name, int priority,
 
   return tid;
 }
+
+/* Check whether the thread is in a blocked state and the blocking time 
+   is greater than 0.  If this situation is met, the blocking time 
+   of the thread is reduced by one, and when the blocking time drops 
+   to 0, the thread is unblocked, */
+void
+blocked_thread_check (struct thread *t, void *aux UNUSED)
+{
+  if (t->status == THREAD_BLOCKED && t->ticks_blocked > 0)
+  {
+    t->ticks_blocked--;
+    if (t->ticks_blocked == 0)
+    {
+        thread_unblock(t);
+    }
+  }
+}
+
 
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
